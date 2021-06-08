@@ -8,6 +8,18 @@ const urlDatabase = {
   "9sm5xK": "http://www.google.com"
 };
 
+function generateRandomString() {
+  const characters = "qwertyuiopasdfghjklzxcvbnm";
+  let result = "";
+  for (let i = 0; i < 6; i++ ) {
+    result += characters.charAt(Math.random() * characters.length);
+  }
+  console.log("result: ",result);
+
+}
+
+generateRandomString();
+
 app.set('view engine', 'ejs');
 
 app.use(bodyParser.urlencoded({extended: true}));
