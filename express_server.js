@@ -2,6 +2,7 @@ const express = require("express");
 const app = express();
 const PORT = 8080; // default port 8080
 const bodyParser = require("body-parser");
+const cookieParser = require('cookie-parser');
 
 let urlDatabase = {
   "b2xVn2": "http://www.lighthouselabs.ca",
@@ -22,6 +23,7 @@ generateRandomString();
 app.set('view engine', 'ejs');
 
 app.use(bodyParser.urlencoded({extended: true}));
+app.use(cookieParser());
 
 app.get("/", (req, res) => {
   res.send("Hello!");
@@ -31,9 +33,27 @@ app.get("/hello", (req, res) => {
   res.send("<html><body>Hello <b>World</b></body></html>\n");
 });
 
+//login
+app.post("/login", (req, res) => {
+  const username = req.body.username;
+  console.log("username: ", username);
+  res
+    .cookie("username", username)
+    .redirect("/urls")
+});
+
+//log out
+app.post("/logout", (req, res) => {
+  res
+    .clearCookie('username')
+    .redirect("urls")
+});
+
 //list of all urls
 app.get("/urls", (req, res) => {
-  const templateVars = { urls: urlDatabase };
+  const templateVars = { 
+    username: req.cookies["username"],
+    urls: urlDatabase };
   res.render("urls_index", templateVars);
 });
 
@@ -56,7 +76,10 @@ app.get("/urls/:shortURL", (req, res) => {
   if (!urlDatabase[shortURL]) {
     res.status(404).send('Page Not Found');
   }
-  const templateVars = { shortURL: shortURL, longURL: urlDatabase[shortURL] };
+  const templateVars = { 
+    username: req.cookies["username"],
+    shortURL: shortURL, 
+    longURL: urlDatabase[shortURL] };
   res.render("urls_show", templateVars);
 });
 
