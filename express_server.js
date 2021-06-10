@@ -147,7 +147,7 @@ app.post("/logout", (req, res) => {
 app.get("/urls", (req, res) => {
   const user = users[req.cookies.cookieId];
   let urls;
-  
+
   if (user) {
     urls = urlsForUser(user); 
   }
@@ -161,8 +161,6 @@ app.get("/urls", (req, res) => {
 //create new url page
 app.get("/urls/new", (req, res) => {
   const user = users[req.cookies.cookieId];
-  console.log("user: ", user);
-  console.log("matching?", urlIdMatchingUser(user));
 
   if (!user) {
     return res.status(403).send("Cannot access");
@@ -179,7 +177,11 @@ app.get("/urls/new", (req, res) => {
 app.post("/urls", (req, res) => {
   console.log(req.body);  // Log the POST request body to the console
   let shortURL = generateRandomString();
-  urlDatabase[shortURL] = req.body.longURL;
+
+  urlDatabase[shortURL] = {
+    longUrl: req.body.longURL,
+    userID:req.cookies.cookieId
+  };
   res.redirect(`/urls/${shortURL}`);
 });
 
@@ -187,9 +189,18 @@ app.post("/urls", (req, res) => {
 app.get("/urls/:shortURL", (req, res) => {
   const user = users[req.cookies.cookieId];
   const shortURL = req.params.shortURL;
+  let urls;
 
   if (!urlDatabase[shortURL]) {
     res.status(404).send('Page Not Found');
+  }
+  
+  if (user) {
+    urls = urlsForUser(user); 
+  }
+
+  if (!urls[`${shortURL}`]) {
+    return res.status(403).send("Cannot access");
   }
 
   const templateVars = { 
