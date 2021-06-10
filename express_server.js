@@ -37,6 +37,14 @@ function findEmail() {
   }
 }
 
+function findUser(email, password) {
+  for (const user in users) {
+    if (users[user].email === email && users[user].password === password) {
+      return users[user].id;
+    }
+  }
+}
+
 app.set('view engine', 'ejs');
 
 app.use(bodyParser.urlencoded({extended: true}));
@@ -52,7 +60,9 @@ app.get("/hello", (req, res) => {
 
 //register page
 app.get("/register", (req, res) => {
-  res.render("register");
+  const user = users[req.cookies.cookieId];
+  const templateVars = { user };
+  res.render("register", templateVars);
 });
 
 //register submit
@@ -67,7 +77,6 @@ app.post("/register", (req, res) => {
     return res.status(400).send("user already exist");
   }
   
-
   if (!email || !password) {
     return res.status(400).send("fields need input");
   }
@@ -86,7 +95,9 @@ app.post("/register", (req, res) => {
 
 //login page
 app.get("/login", (req, res) => {
-  res.render("login");
+  const user = users[req.cookies.cookieId];
+  const templateVars = { user };
+  res.render("login", templateVars);
 });
 
 //login submit
@@ -95,20 +106,21 @@ app.post("/login", (req, res) => {
   const password = req.body.password;
   console.log("login email: ", email, "login password: ", password);
 
-  let foundUser;
+  const user = findUser(email, password);
+  console.log("user", user);
 
-  for (const eachUser in users) {
-    const user = users[eachUser];
-    if (user.email === email) {
-      foundUser = user;
+  if (findEmail() !== email) {
+    return res.status(403).send("User not found");
+  }
+
+  if (findEmail() === email) {
+    if (!findUser()) {
+    return res.status(403).send("Incorrect password");
     }
   }
 
-  if (!foundUser) {
-    return res.status(404).send("User not found");
-  }
-
   res
+    .cookie("cookieId", user)
     .redirect("/urls")
 });
 
@@ -121,8 +133,7 @@ app.post("/logout", (req, res) => {
 
 //list of all urls page
 app.get("/urls", (req, res) => {
-  const cookieId = req.cookies.cookieId;
-  const user = users[cookieId];
+  const user = users[req.cookies.cookieId];
 
   const templateVars = { 
     user,
@@ -132,7 +143,9 @@ app.get("/urls", (req, res) => {
 
 //create new url page
 app.get("/urls/new", (req, res) => {
-  res.render("urls_new");
+  const user = users[req.cookies.cookieId];
+  const templateVars = { user };
+  res.render("urls_new", templateVars);
 });
 
 //create new url submit
@@ -145,13 +158,14 @@ app.post("/urls", (req, res) => {
 
 //short url detail page
 app.get("/urls/:shortURL", (req, res) => {
+  const user = users[req.cookies.cookieId];
   const shortURL = req.params.shortURL;
   if (!urlDatabase[shortURL]) {
     res.status(404).send('Page Not Found');
   }
 
   const templateVars = { 
-    username: req.cookies["userId"],
+    user,
     shortURL: shortURL, 
     longURL: urlDatabase[shortURL] };
   res.render("urls_show", templateVars);
