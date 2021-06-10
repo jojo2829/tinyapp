@@ -5,8 +5,8 @@ const bodyParser = require("body-parser");
 const cookieParser = require('cookie-parser');
 
 let urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com"
+  "b2xVn2": {longUrl: "http://www.lighthouselabs.ca", userID: "aabb"} ,
+  "9sm5xK": {longUrl: "http://www.google.com", userID: "eekk"}
 };
 
 const users = { 
@@ -29,13 +29,13 @@ function generateRandomString() {
     result += characters.charAt(Math.random() * characters.length);
   }
   return result;
-}
+};
 
 function findEmail() {
   for (const user in users) {
     return users[user].email;
   }
-}
+};
 
 function findUser(email, password) {
   for (const user in users) {
@@ -43,7 +43,19 @@ function findUser(email, password) {
       return users[user].id;
     }
   }
-}
+};
+
+function urlsForUser(user) {
+  let result = {};
+  for (const url in urlDatabase) {
+    if (urlDatabase[url].userID === user.id) {
+      result[url] = urlDatabase[url]; 
+    }
+  }
+  return result
+};
+
+//console.log("urls for users", urlsForUser(users.aabb))
 
 app.set('view engine', 'ejs');
 
@@ -113,11 +125,11 @@ app.post("/login", (req, res) => {
     return res.status(403).send("User not found");
   }
 
-  if (findEmail() === email) {
-    if (!findUser()) {
+  
+  if (!findUser(email, password)) {
     return res.status(403).send("Incorrect password");
-    }
   }
+  
 
   res
     .cookie("cookieId", user)
@@ -134,17 +146,32 @@ app.post("/logout", (req, res) => {
 //list of all urls page
 app.get("/urls", (req, res) => {
   const user = users[req.cookies.cookieId];
+  let urls;
+  
+  if (user) {
+    urls = urlsForUser(user); 
+  }
 
   const templateVars = { 
     user,
-    urls: urlDatabase };
-  res.render("urls_index", templateVars);
+    urls };
+  res.render("urls_index", templateVars); 
 });
 
 //create new url page
 app.get("/urls/new", (req, res) => {
   const user = users[req.cookies.cookieId];
-  const templateVars = { user };
+  console.log("user: ", user);
+  console.log("matching?", urlIdMatchingUser(user));
+
+  if (!user) {
+    return res.status(403).send("Cannot access");
+  }
+  
+  const templateVars = { 
+    user,
+    urls: urlDatabase
+  };
   res.render("urls_new", templateVars);
 });
 
@@ -160,6 +187,7 @@ app.post("/urls", (req, res) => {
 app.get("/urls/:shortURL", (req, res) => {
   const user = users[req.cookies.cookieId];
   const shortURL = req.params.shortURL;
+
   if (!urlDatabase[shortURL]) {
     res.status(404).send('Page Not Found');
   }
@@ -167,7 +195,8 @@ app.get("/urls/:shortURL", (req, res) => {
   const templateVars = { 
     user,
     shortURL: shortURL, 
-    longURL: urlDatabase[shortURL] };
+    longURL: urlDatabase[shortURL].longUrl };
+
   res.render("urls_show", templateVars);
 });
 
