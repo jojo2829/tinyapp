@@ -9,35 +9,35 @@ let urlDatabase = {
   "9sm5xK": {longUrl: "http://www.google.com", userID: "eekk"}
 };
 
-const users = { 
+const users = {
   "aabb": {
-    id: "aabb", 
-    email: "aabb@mail.com", 
+    id: "aabb",
+    email: "aabb@mail.com",
     password: "a123"
   },
- "eekk": {
-    id: "eekk", 
-    email: "eekk@mail.com", 
+  "eekk": {
+    id: "eekk",
+    email: "eekk@mail.com",
     password: "e123"
   }
-}
+};
 
-function generateRandomString() {
+const generateRandomString = function() {
   const characters = "qwertyuiopasdfghjklzxcvbnm";
   let result = "";
-  for (let i = 0; i < 6; i++ ) {
+  for (let i = 0; i < 6; i++) {
     result += characters.charAt(Math.random() * characters.length);
   }
   return result;
 };
 
-function findEmail() {
+const findEmail = function() {
   for (const user in users) {
     return users[user].email;
   }
 };
 
-function findUser(email, password) {
+const findUser = function(email, password) {
   for (const user in users) {
     if (users[user].email === email && users[user].password === password) {
       return users[user].id;
@@ -45,17 +45,15 @@ function findUser(email, password) {
   }
 };
 
-function urlsForUser(user) {
+const urlsForUser = function(user) {
   let result = {};
   for (const url in urlDatabase) {
     if (urlDatabase[url].userID === user.id) {
-      result[url] = urlDatabase[url]; 
+      result[url] = urlDatabase[url];
     }
   }
-  return result
+  return result;
 };
-
-//console.log("urls for users", urlsForUser(users.aabb))
 
 app.set('view engine', 'ejs');
 
@@ -102,7 +100,7 @@ app.post("/register", (req, res) => {
   console.log("new users", users);
   res
     .cookie("cookieId", newUserId)
-    .redirect("urls")
+    .redirect("urls");
 });
 
 //login page
@@ -133,14 +131,14 @@ app.post("/login", (req, res) => {
 
   res
     .cookie("cookieId", user)
-    .redirect("/urls")
+    .redirect("/urls");
 });
 
 //logout submit
 app.post("/logout", (req, res) => {
   res
     .clearCookie('cookieId')
-    .redirect("urls")
+    .redirect("urls");
 });
 
 //list of all urls page
@@ -149,13 +147,13 @@ app.get("/urls", (req, res) => {
   let urls;
 
   if (user) {
-    urls = urlsForUser(user); 
+    urls = urlsForUser(user);
   }
 
-  const templateVars = { 
+  const templateVars = {
     user,
     urls };
-  res.render("urls_index", templateVars); 
+  res.render("urls_index", templateVars);
 });
 
 //create new url page
@@ -166,7 +164,7 @@ app.get("/urls/new", (req, res) => {
     return res.status(403).send("Cannot access");
   }
   
-  const templateVars = { 
+  const templateVars = {
     user,
     urls: urlDatabase
   };
@@ -196,16 +194,16 @@ app.get("/urls/:shortURL", (req, res) => {
   }
   
   if (user) {
-    urls = urlsForUser(user); 
+    urls = urlsForUser(user);
   }
 
   if (!urls[`${shortURL}`]) {
     return res.status(403).send("Cannot access");
   }
 
-  const templateVars = { 
+  const templateVars = {
     user,
-    shortURL: shortURL, 
+    shortURL: shortURL,
     longURL: urlDatabase[shortURL].longUrl };
 
   res.render("urls_show", templateVars);
@@ -215,6 +213,13 @@ app.get("/urls/:shortURL", (req, res) => {
 app.post("/urls/:shortURL", (req, res) => {
   const longURL = req.body.longURL;
   const shortURL = req.params.shortURL;
+  const urlUserId = urlDatabase[shortURL].userID;
+  const cookieId = req.cookies.cookieId;
+
+  if (urlUserId !== cookieId) {
+    return res.status(403).send("Cannot access");
+  }
+  
   urlDatabase[shortURL] = longURL;
   res.redirect(`/urls`);
 });
@@ -228,8 +233,15 @@ app.get("/u/:shortURL", (req, res) => {
 
 //delete from list submit
 app.post("/urls/:shortURL/delete", (req, res) => {
-  console.log("deleted ", req.params)
   const itemToBeDeleted = req.params.shortURL;
+  const urlUserId = urlDatabase[itemToBeDeleted].userID;
+  const cookieId = req.cookies.cookieId;
+
+  if (urlUserId !== cookieId) {
+    return res.status(403).send("Cannot access");
+  }
+
+  console.log("deleted ", req.params);
   delete urlDatabase[itemToBeDeleted];
 
   res.redirect("/urls");
