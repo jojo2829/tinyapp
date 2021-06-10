@@ -1,8 +1,10 @@
 const express = require("express");
-const app = express();
-const PORT = 8080; // default port 8080
 const bodyParser = require("body-parser");
 const cookieParser = require('cookie-parser');
+const bcrypt = require('bcryptjs');
+
+const app = express();
+const PORT = 8080;
 
 let urlDatabase = {
   "b2xVn2": {longUrl: "http://www.lighthouselabs.ca", userID: "aabb"} ,
@@ -13,12 +15,12 @@ const users = {
   "aabb": {
     id: "aabb",
     email: "aabb@mail.com",
-    password: "a123"
+    password: "$2b$10$6XRDyfKywNDg.AIu5.x/4.k8ZZZVs0WiZ5TKwtQT8CxSC0NSpNxHK"
   },
   "eekk": {
     id: "eekk",
     email: "eekk@mail.com",
-    password: "e123"
+    password: "$2b$10$XUMYc3wfgu3pD0xdpO08u.2FSm4pMHAQpzJWWL7kC1T8TPOdm/cRO"
   }
 };
 
@@ -32,18 +34,20 @@ const generateRandomString = function() {
 };
 
 const findEmail = function() {
+  let result;
   for (const user in users) {
-    return users[user].email;
+    result = users[user].email;
   }
+  return result;
 };
 
-const findUser = function(email, password) {
-  for (const user in users) {
-    if (users[user].email === email && users[user].password === password) {
-      return users[user].id;
-    }
-  }
-};
+// const findUser = function(email) {
+//   for (const user in users) {
+//     if (users[user].email === email) {
+//       return users[user].id;
+//     }
+//   }
+// };
 
 const urlsForUser = function(user) {
   let result = {};
@@ -81,6 +85,8 @@ app.post("/register", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
   console.log("register email: ", email, "register password: ", password);
+  const hash = bcrypt.hashSync(password, 10);
+
 
   //check if email is registered
   if (findEmail() === email) {
@@ -93,7 +99,7 @@ app.post("/register", (req, res) => {
 
   //create new user
   const newUserId = generateRandomString().substring(2);
-  const newUser = {id: newUserId, email, password};
+  const newUser = {id: newUserId, email, password: hash};
 
   //add register user to users
   users[newUserId] = newUser;
@@ -116,22 +122,31 @@ app.post("/login", (req, res) => {
   const password = req.body.password;
   console.log("login email: ", email, "login password: ", password);
 
-  const user = findUser(email, password);
-  console.log("user", user);
+  const hash = bcrypt.hashSync(password, 10);
+  console.log("hash: ", hash);
+
+
+  let foundUser;
+
+  for (const userId in users) {
+    const user = users[userId];
+    if (user.email === email) {
+      foundUser = user;
+    }
+  }
 
   if (findEmail() !== email) {
-    return res.status(403).send("User not found");
+    return res.status(401).send("User not found");
   }
 
-  
-  if (!findUser(email, password)) {
-    return res.status(403).send("Incorrect password");
-  }
-  
+  bcrypt.compare(password, foundUser.password, function(err, result) {
+    if (!result) {
+      return res.status(401).send("Password Incorrect");
+    }
+    res.cookie("cookieId", foundUser.id);
+    res.redirect("/urls");
+  });
 
-  res
-    .cookie("cookieId", user)
-    .redirect("/urls");
 });
 
 //logout submit
@@ -227,7 +242,10 @@ app.post("/urls/:shortURL", (req, res) => {
 //short url redirects to actual page
 app.get("/u/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
-  const longURL = urlDatabase[shortURL];
+  const longURL = urlDatabase[shortURL].longUrl;
+  console.log("short url: ",shortURL);
+  console.log("long url: ",longURL);
+  //res.end();
   res.redirect(longURL);
 });
 
